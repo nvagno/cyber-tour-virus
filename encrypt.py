@@ -2,15 +2,16 @@ import os
 
 from cryptography.fernet import Fernet, InvalidToken
 
+KEY_FILE_NAME = "key.key"
 
 def generate_key():
     key = Fernet.generate_key()
-    with open("key.key", "wb") as f:
+    with open(KEY_FILE_NAME, "wb") as f:
         f.write(key)
 
 
 def read_key():
-    with open("key.key", "rb") as f:
+    with open(KEY_FILE_NAME, "rb") as f:
         return f.read()
 
 
