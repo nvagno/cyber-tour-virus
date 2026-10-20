@@ -22,6 +22,7 @@ def decrypt(targets, key):
 
 if __name__ == '__main__':
     key = read_key()
-    targets = ["files/" + filename for filename in os.listdir("files")]
+    target_folder_path = "files/"
+    targets = [target_folder_path + filename for filename in os.listdir(target_folder_path) if filename != "readme.txt"]
 
     decrypt(targets, key)
