@@ -1,0 +1,1 @@
+print("Je suis un programme cible")
